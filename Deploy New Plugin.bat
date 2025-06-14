@@ -1,10 +1,9 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-:: Prompt user for environment variables
-echo ======================================
-echo      Plugin Setup Wizard
-echo ======================================
+:: ======================================
+::      Plugin Setup Wizard
+:: ======================================
 
 :: Get Plugin Slug (used for filenames & paths)
 set /p PLUGIN_SLUG="Enter the plugin slug (e.g., my-plugin): "
@@ -28,7 +27,9 @@ for /f "delims=" %%A in ('powershell -Command "[System.Globalization.CultureInfo
 set /p PLUGIN_VERSION="Enter the plugin version (default: 1.0.0): "
 if "!PLUGIN_VERSION!"=="" set PLUGIN_VERSION=1.0.0
 
-:: Generate .env file
+:: ======================================
+:: Generate .env File
+:: ======================================
 echo # Environment Variables for Plugin Processing > .env
 echo PLUGIN_SLUG=!PLUGIN_SLUG! >> .env
 echo PLUGIN_NAME=!PLUGIN_NAME! >> .env
@@ -52,27 +53,53 @@ echo AUTHOR_URI=https://yourwebsite.com >> .env
 echo USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64) >> .env
 echo CONTENT_TYPE=application/x-www-form-urlencoded >> .env
 
-echo .env file has been created successfully!
+echo ✅ .env file has been created successfully!
 
-:: Unzip the my-plugin.zip file
+:: ======================================
+:: Extract plugin files
+:: ======================================
+set "BASE_ZIP=my-plugin.zip"
+set "TEMP_DIR=tmp-plugin"
 set "PLUGIN_DIR=!PLUGIN_SLUG!"
-set "ZIP_FILE=my-plugin.zip"
 
-if not exist "!ZIP_FILE!" (
-    echo Error: !ZIP_FILE! not found!
+:: Clean up old extraction if exists
+if exist "!TEMP_DIR!" rmdir /s /q "!TEMP_DIR!"
+
+if not exist "!BASE_ZIP!" (
+    echo ❌ Error: !BASE_ZIP! not found!
     pause
     exit /b
 )
 
-echo Extracting plugin files...
-powershell -Command "Expand-Archive -Path '!ZIP_FILE!' -DestinationPath '!PLUGIN_DIR!' -Force"
+echo 📦 Extracting plugin files...
+powershell -Command "Expand-Archive -Path '!BASE_ZIP!' -DestinationPath '!TEMP_DIR!' -Force"
+
+:: Rename extracted folder if needed
+if exist "!TEMP_DIR!\my-plugin" (
+    ren "!TEMP_DIR!\my-plugin" "!PLUGIN_DIR!"
+    move "!TEMP_DIR!\!PLUGIN_DIR!" . >nul
+)
+rmdir /s /q "!TEMP_DIR!"
 
 :: Rename main plugin file
 if exist "!PLUGIN_DIR!\my-plugin.php" ren "!PLUGIN_DIR!\my-plugin.php" "!PLUGIN_SLUG!.php"
 
+:: ======================================
 :: Run PHP script to modify plugin files
-echo Running PHP script to update plugin files...
-php working-php\setup-plugin.php "!PLUGIN_DIR!" "!PLUGIN_NAME!" "!DESCRIPTION!" "!FUNCTION_PREFIX!" "!PLUGIN_SLUG_UNDERSCORES!" "!LOWERCASE_PREFIX!"
+:: ======================================
+echo 🛠️ Running PHP setup script...
+php working-php\setup-plugin.php "!PLUGIN_DIR!" "!PLUGIN_NAME!" "!DESCRIPTION!" "!FUNCTION_PREFIX!" "!PLUGIN_SLUG_UNDERSCORES!" "!LOWERCASE_PREFIX!" "!PLUGIN_VERSION!"
 
-echo Plugin setup is complete! The updated plugin is located in !PLUGIN_DIR!.
+IF %ERRORLEVEL% NEQ 0 (
+    echo ❌ PHP script failed. Aborting.
+    pause
+    exit /b
+)
+
+:: ======================================
+:: Log activity
+:: ======================================
+echo [%date% %time%] Setup completed for plugin: !PLUGIN_SLUG! >> setup-log.txt
+
+echo 🎉 Plugin setup is complete! The updated plugin is located in !PLUGIN_DIR!.
 pause

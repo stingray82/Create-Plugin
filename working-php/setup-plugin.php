@@ -10,47 +10,62 @@ $description             = $argv[3];
 $function_prefix         = $argv[4]; // e.g. "rup_"
 $plugin_slug_underscores = $argv[5]; // e.g. "my_plugin"
 $lowercase_prefix        = $argv[6]; // e.g. "rup_my_plugin"
+$plugin_slug_hyphen      = str_replace('_', '-', $plugin_slug_underscores);
 
-// Construct new constant names based on parameters.
-$new_VERSION   = "{$function_prefix}{$plugin_slug_underscores}_VERSION";
-$new_SLUG      = "{$function_prefix}{$plugin_slug_underscores}_SLUG";
-$new_MAIN_FILE = "{$function_prefix}{$plugin_slug_underscores}_MAIN_FILE";
-$new_DIR       = "{$function_prefix}{$plugin_slug_underscores}_DIR";
-$new_URL       = "{$function_prefix}{$plugin_slug_underscores}_URL";
+// UPPERCASE versions for constants
+$upper_prefix  = strtoupper($function_prefix);
+$upper_slug    = strtoupper($plugin_slug_underscores);
+$upper_prefix_slug = "{$upper_prefix}{$upper_slug}";
 
-// Build the search-replace array in a specific order so that longer strings in define() statements get replaced first.
+// Construct new constant names
+$new_VERSION   = "{$upper_prefix_slug}_VERSION";
+$new_SLUG      = "{$upper_prefix_slug}_SLUG";
+$new_MAIN_FILE = "{$upper_prefix_slug}_MAIN_FILE";
+$new_DIR       = "{$upper_prefix_slug}_DIR";
+$new_URL       = "{$upper_prefix_slug}_URL";
+
+// Build search/replace array
 $search_replace = [
-    // Replace constant definitions inside define() calls.
+    // Replace constant definitions
     "define('MY_PLUGIN_VERSION'"   => "define('{$new_VERSION}'",
     "define('MY_PLUGIN_SLUG'"      => "define('{$new_SLUG}'",
     "define('MY_PLUGIN_MAIN_FILE'" => "define('{$new_MAIN_FILE}'",
     "define('MY_PLUGIN_DIR'"       => "define('{$new_DIR}'",
     "define('MY_PLUGIN_URL'"       => "define('{$new_URL}'",
-    
-    // Replace any remaining occurrences of the old constant names.
+
+    // Replace constant usage
     "MY_PLUGIN_VERSION"   => $new_VERSION,
     "MY_PLUGIN_SLUG"      => $new_SLUG,
     "MY_PLUGIN_MAIN_FILE" => $new_MAIN_FILE,
     "MY_PLUGIN_DIR"       => $new_DIR,
     "MY_PLUGIN_URL"       => $new_URL,
-    
-    // Replace function names and hook callbacks.
+
+    // Replace constant *values*
+    "'my_plugin'" => "'{$plugin_slug_hyphen}'",
+
+    // Function names
     "function my_plugin_" => "function {$lowercase_prefix}_",
     "register_activation_hook(__FILE__, 'my_plugin_activate')"   => "register_activation_hook(__FILE__, '{$lowercase_prefix}_activate')",
     "register_deactivation_hook(__FILE__, 'my_plugin_deactivate')" => "register_deactivation_hook(__FILE__, '{$lowercase_prefix}_deactivate')",
     "update_option('my_plugin_activated'"   => "update_option('{$lowercase_prefix}_activated'",
     "delete_option('my_plugin_activated'"   => "delete_option('{$lowercase_prefix}_activated'",
-    
-    // Replace plugin header and textual placeholders.
+
+    // Header fields
     "My Plugin" => $plugin_name,
     "A lightweight WordPress plugin starter template." => $description,
-    
-    // Replace texts in the licensing/updater block.
+
+    // Updater usage
+    "'slug'        => 'my_plugin'," => "'slug'        => '{$plugin_slug_hyphen}',",
+
+    // Other references
     "Your Plugin"           => $plugin_name,
-    "your-textdomain"       => strtolower($plugin_slug_underscores) . '-textdomain',
-    "your-plugin-menu-slug" => strtolower($plugin_slug_underscores) . '-menu-slug',
-    "my-plugin-page"        => strtolower($plugin_slug_underscores) . '-page',
-    "my-plugin-deactivation-page" => strtolower($plugin_slug_underscores) . '-deactivation-page'
+    "your-textdomain"       => strtolower($plugin_slug_hyphen) . '-textdomain',
+    "your-plugin-menu-slug" => strtolower($plugin_slug_hyphen) . '-menu-slug',
+    "my-plugin-page"        => strtolower($plugin_slug_hyphen) . '-page',
+    "my-plugin-deactivation-page" => strtolower($plugin_slug_hyphen) . '-deactivation-page',
+
+    // Literal textdomain/text fallback
+    "my_plugin" => strtolower($plugin_slug_underscores)
 ];
 
 function replace_in_file($file, $search_replace) {
@@ -63,7 +78,7 @@ function replace_in_file($file, $search_replace) {
     file_put_contents($file, $content);
 }
 
-// Iterate recursively over all PHP files in the plugin directory.
+// Iterate recursively
 $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($plugin_dir));
 foreach ($iterator as $file) {
     if ($file->isFile() && pathinfo($file, PATHINFO_EXTENSION) === "php") {
@@ -71,4 +86,4 @@ foreach ($iterator as $file) {
     }
 }
 
-echo "Plugin files have been successfully updated.\n";
+echo "✅ Plugin files have been successfully updated.\n";
